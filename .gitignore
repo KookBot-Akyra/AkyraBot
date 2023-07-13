@@ -8,6 +8,9 @@ __pycache__/
 
 # Distribution / packaging
 .Python
+.vscode
+.idea
+*.yml
 build/
 develop-eggs/
 dist/
