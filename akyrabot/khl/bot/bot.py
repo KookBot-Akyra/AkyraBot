@@ -8,7 +8,6 @@ from .. import AsyncRunnable  # interfaces
 from .. import Cert, HTTPRequester, WebhookReceiver, WebsocketReceiver, Gateway, Client  # net related
 from .. import MessageTypes, EventTypes, SlowModeTypes, SoftwareTypes  # types
 from .. import User, Channel, PublicChannel, Guild, Event, Message  # concepts
-from ..command import CommandManager
 from ..game import Game
 from ..task import TaskManager
 
@@ -30,7 +29,6 @@ class Bot(AsyncRunnable):
     """
     # components
     client: Client
-    command: CommandManager
     task: TaskManager
 
     # flags
@@ -70,9 +68,6 @@ class Bot(AsyncRunnable):
             raise ValueError('require token or cert')
 
         self._init_client(cert or Cert(token=token), client, gate, out, compress, port, route)
-        self._register_client_handler()
-
-        self.command = CommandManager()
 
         self.task = TaskManager()
 
@@ -114,37 +109,6 @@ class Bot(AsyncRunnable):
             raise ValueError(f'cert type: {cert.type} not supported')
 
         self.client = Client(Gateway(_out, _in))
-
-    def _register_client_handler(self):
-        # text and kmd -> msg
-        msg_handler = self._make_msg_handler()
-        self.client.register(MessageTypes.TEXT, msg_handler)
-        self.client.register(MessageTypes.KMD, msg_handler)
-
-        # sys -> event
-        self.client.register(MessageTypes.SYS, self._make_event_handler())
-
-    def _make_msg_handler(self) -> Callable:
-        """
-        construct a function to receive msg from client, and interpret it with _cmd_index
-        """
-
-        async def handler(msg: Message):
-            await self.command.handle(self.loop, self.client, msg, {Message: msg, Bot: self})
-
-        return handler
-
-    def _make_event_handler(self) -> Callable:
-
-        async def handler(event: Event):
-            if event.event_type not in self._event_index:
-                return
-            if not self._event_index[event.event_type]:
-                return
-            for event_handler in self._event_index[event.event_type]:
-                await event_handler(self, event)
-
-        return handler
 
     def add_event_handler(self, type: EventTypes, handler: TypeEventHandler):
         """add an event handler function for EventTypes `type`"""

@@ -1,5 +1,4 @@
 import asyncio
-import logging
 from typing import Union, List
 
 from aiohttp import ClientSession
@@ -7,7 +6,10 @@ from aiohttp import ClientSession
 from .api import _Req
 from .cert import Cert
 
-log = logging.getLogger(__name__)
+from .log import logger
+
+log = logger
+__name__ == "Khl.requester"
 
 API = 'https://www.kookapp.cn/api/v3'
 

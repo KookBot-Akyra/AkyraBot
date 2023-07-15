@@ -9,6 +9,7 @@ from aiohttp import ClientWebSocketResponse, ClientSession, web, WSMessage
 from .cert import Cert
 from .interface import AsyncRunnable
 from .schema.wsHandler import EventHandler
+from ..handle import msgHanlder
 
 from .log import logger
 
@@ -25,21 +26,11 @@ class Receiver(AsyncRunnable, ABC):
     2. decrypt & parse raw data into pkg
     3. put pkg into the pkg_queue() for others to use
     """
-    _queue: asyncio.Queue
 
     @property
     def type(self) -> str:
         """the network type used by the receiver"""
         raise NotImplementedError
-
-    @property
-    def pkg_queue(self) -> asyncio.Queue:
-        """output port of the receiver"""
-        return self._queue
-
-    @pkg_queue.setter
-    def pkg_queue(self, queue: asyncio.Queue):
-        self._queue = queue
 
     @abstractmethod
     async def start(self):
@@ -134,7 +125,8 @@ class WebsocketReceiver(Receiver):
             elif channel_type == "PERSON":
                 msg = f"{msg_timestamp} 接收到@{user_name}#{identify_num}私信消息: 通道类型: {channel_type}, 消息类型: {type}, 内容: \"{content}\" - {msg_id}"
             log.info(msg)
-            await self.pkg_queue.put(pkg['d'])
+            # 这里后面接接口
+            await msgHanlder(pkg['d']).handle()
         except Exception as e:
             log.exception(e)
 
@@ -193,7 +185,7 @@ class WebhookReceiver(Receiver):
                 if pkg['type'] == 255 and pkg[
                         'channel_type'] == 'WEBHOOK_CHALLENGE':
                     return web.json_response({'challenge': pkg['challenge']})
-                await self.pkg_queue.put(pkg)
+                # await self.pkg_queue.put(pkg)
 
             return web.Response()
 
@@ -203,7 +195,7 @@ class WebhookReceiver(Receiver):
         await runner.setup()  # runner use its own loop, can not be set
         site = web.TCPSite(runner, '0.0.0.0', self.port)
 
-        log.info('[ init ] launched')
+        log.info('[ init ] Khl模块已启动')
 
         await site.start()
 
