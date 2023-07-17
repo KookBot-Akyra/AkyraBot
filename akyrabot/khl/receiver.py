@@ -9,7 +9,7 @@ from aiohttp import ClientWebSocketResponse, ClientSession, web, WSMessage
 from .cert import Cert
 from .interface import AsyncRunnable
 from .schema.wsHandler import EventHandler
-from ..handle import msgHanlder
+from ..handle import msgHandler
 
 from .log import logger
 
@@ -112,92 +112,20 @@ class WebsocketReceiver(Receiver):
                 return
             self._NEWEST_SN = pkg_handled.sn
             data_ = pkg_handled.d
-            type = int(data_.type) # 消息类型
-            channel_type = data_.channel_type # 消息通道类型
-            user_name = data_.extra.author.username # 用户名
-            identify_num = data_.extra.author.identify_num # 用户名的认证数字
-            guild_id = data_.extra.guild_id # 服务器ID
-            content = data_.content # 消息内容
-            msg_id = data_.msg_id # 消息ID
-            msg_timestamp = time.strftime("%m-%d %H:%M:%S", time.localtime(data_.msg_timestamp / 1000)) # 发送时间
+            type = int(data_.type)  # 消息类型
+            channel_type = data_.channel_type  # 消息通道类型
+            user_name = data_.extra.author.username  # 用户名
+            identify_num = data_.extra.author.identify_num  # 用户名的认证数字
+            guild_id = data_.extra.guild_id  # 服务器ID
+            content = data_.content  # 消息内容
+            msg_id = data_.msg_id  # 消息ID
+            msg_timestamp = time.strftime("%m-%d %H:%M:%S", time.localtime(data_.msg_timestamp / 1000))  # 发送时间
             if channel_type == "GROUP":
                 msg = f"{msg_timestamp} 服务器({guild_id})接收到消息: 通道类型: {channel_type}, 消息类型: {type}, 发送者: {user_name}#{identify_num}, 内容: \"{content}\" - {msg_id}"
             elif channel_type == "PERSON":
                 msg = f"{msg_timestamp} 接收到@{user_name}#{identify_num}私信消息: 通道类型: {channel_type}, 消息类型: {type}, 内容: \"{content}\" - {msg_id}"
             log.info(msg)
             # 这里后面接接口
-            await msgHanlder(pkg['d']).handle()
+            await msgHandler(pkg['d']).handle()
         except Exception as e:
             log.exception(e)
-
-
-class WebhookReceiver(Receiver):
-    """receive data in webhook mode"""
-
-    def __init__(self, cert: Cert, *, port: int, route: str, compress: bool):
-        super().__init__()
-        self._cert = cert
-        self.port = port
-        self.route = route
-        self.app = web.Application()
-        self.compress = compress
-        self.sn_dup_map = {}
-
-    @property
-    def type(self) -> str:
-        return 'webhook'
-
-    def _is_dup(self, req: dict) -> bool:
-        sn = req.get('sn', None)
-        if sn is None:
-            return False
-        current = time.time()
-        if sn in self.sn_dup_map:
-            if current - self.sn_dup_map[sn] <= 600:
-                # 600 sec timed out
-                return True
-        self.sn_dup_map[sn] = current
-        return False
-
-    async def start(self):
-
-        async def on_recv(request: web.Request):
-            try:
-                data = await request.read()
-                data = zlib.decompress(data) if self.compress else data
-                pkg: Dict = self._cert.decode_raw(data)
-            except Exception as e:
-                log.exception(e)
-                return web.Response()
-
-            if not pkg:  # empty pkg
-                return web.Response()
-
-            if pkg['d'][
-                    'verify_token'] != self._cert.verify_token:  # check verify_token
-                return web.Response()
-
-            if self._is_dup(pkg):  # dup pkg
-                return web.Response()
-
-            if pkg['s'] == 0:
-                pkg = pkg['d']
-                if pkg['type'] == 255 and pkg[
-                        'channel_type'] == 'WEBHOOK_CHALLENGE':
-                    return web.json_response({'challenge': pkg['challenge']})
-                # await self.pkg_queue.put(pkg)
-
-            return web.Response()
-
-        self.app.router.add_post(self.route, on_recv)
-
-        runner = web.AppRunner(self.app)
-        await runner.setup()  # runner use its own loop, can not be set
-        site = web.TCPSite(runner, '0.0.0.0', self.port)
-
-        log.info('[ init ] Khl模块已启动')
-
-        await site.start()
-
-        while True:
-            await asyncio.sleep(3600)  # sleep forever

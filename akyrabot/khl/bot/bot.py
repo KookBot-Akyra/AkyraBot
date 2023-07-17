@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Dict, Callable, List, Optional, Union, Coroutine, IO
 
 from .. import AsyncRunnable  # interfaces
-from .. import Cert, HTTPRequester, WebhookReceiver, WebsocketReceiver, Gateway, Client  # net related
+from .. import Cert, HTTPRequester, WebsocketReceiver, Gateway, Client  # net related
 from .. import MessageTypes, EventTypes, SlowModeTypes, SoftwareTypes  # types
 from .. import User, Channel, PublicChannel, Guild, Event, Message  # concepts
 from ..game import Game
@@ -103,8 +103,6 @@ class Bot(AsyncRunnable):
         _out = out if out else HTTPRequester(cert)
         if cert.type == Cert.Types.WEBSOCKET:
             _in = WebsocketReceiver(cert, compress)
-        elif cert.type == Cert.Types.WEBHOOK:
-            _in = WebhookReceiver(cert, port=port, route=route, compress=compress)
         else:
             raise ValueError(f'cert type: {cert.type} not supported')
 

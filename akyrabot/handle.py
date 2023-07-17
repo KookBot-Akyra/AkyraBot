@@ -4,7 +4,7 @@ from .khl.log import logger
 
 __name__ = "Handler"
 
-class msgHanlder():
+class msgHandler:
     _pkg = Dict
 
     def __init__(self, pkg) -> None:

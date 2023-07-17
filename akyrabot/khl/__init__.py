@@ -17,7 +17,7 @@ from ._types import (
     FriendTypes
 )
 from .cert import Cert
-from .receiver import Receiver, WebhookReceiver, WebsocketReceiver
+from .receiver import Receiver, WebsocketReceiver
 from .requester import HTTPRequester
 from .gateway import Gateway, Requestable
 from .client import Client
