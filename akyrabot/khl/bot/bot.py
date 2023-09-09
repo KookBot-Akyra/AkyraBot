@@ -1,8 +1,10 @@
 """implementation of bot"""
 import asyncio
 import warnings
+import json
+import os
 from pathlib import Path
-from typing import Dict, Callable, List, Optional, Union, Coroutine, IO
+from typing import Dict, Callable, List, Optional, Union, Coroutine, IO, Any
 
 from .. import AsyncRunnable  # interfaces
 from .. import Cert, HTTPRequester, WebsocketReceiver, Gateway, Client  # net related
@@ -15,17 +17,52 @@ from ..log import logger
 
 log = logger
 
-__name__ == "Khl.Bot.bot"
+__name__ = "Kook.Bot.bot"
 
 TypeEventHandler = Callable[['Bot', Event], Coroutine]
 TypeMessageHandler = Callable[[Message], Coroutine]
 TypeStartupHandler = Callable[['Bot'], Coroutine]
 TypeShutdownHandler = Callable[['Bot'], Coroutine]
 
+default_config = {
+    "token": "xxxxxx",
+    "port": 5000,
+    "compress": True,
+    "command_prefix": ["/"],
+    "super_user": ["1234567"]
+}
+
+
+class Config:
+    @staticmethod
+    async def write_default_config(path: str) -> bool:
+        if os.path.exists(path) is False:
+            await Config.write(path, default_config)
+            return True
+        else:
+            return False
+
+    @staticmethod
+    async def write(path: str, obj: Any) -> None:
+        with open(path, 'w', encoding='utf8') as config:
+            json.dump(obj, config, ensure_ascii=False, indent=4)
+
+    @staticmethod
+    async def read(path: str) -> Dict[str, Union[str, List[str]]]:
+        if os.path.exists(path) is False:
+            logger.info("配置文件不存在，正在生成新的配置文件...")
+            await Config.write(path, default_config)
+            logger.info("配置文件初始化完成，请修改后重新启动Akyra~")
+            with open(path, "r", encoding='utf8') as config:
+                return json.load(config)
+        else:
+            with open(path, "r", encoding='utf8') as config:
+                return json.load(config)
+
 
 class Bot(AsyncRunnable):
     """
-    Represents a entity that handles msg/events and interact with users/khl server in manners that programmed.
+    Represents a entity that handles msg/events and interact with users/Kook server in manners that programmed.
     """
     # components
     client: Client
@@ -42,15 +79,12 @@ class Bot(AsyncRunnable):
     _shutdown_index: List[TypeShutdownHandler]
 
     def __init__(self,
-                 token: str = '',
                  *,
                  cert: Cert = None,
                  client: Client = None,
                  gate: Gateway = None,
                  out: HTTPRequester = None,
-                 compress: bool = True,
-                 port=5000,
-                 route='/khl-wh'):
+                 route='/Kook-wh'):
         """
         The most common usage: ``Bot(token='xxxxxx')``
 
@@ -64,10 +98,13 @@ class Bot(AsyncRunnable):
         :param port: used to tune the WebhookReceiver
         :param route: used to tune the WebhookReceiver
         """
-        if not token and not cert:
-            raise ValueError('require token or cert')
 
-        self._init_client(cert or Cert(token=token), client, gate, out, compress, port, route)
+        self.cert = cert
+        self.client_ = client
+        self.gate = gate
+        self.out = out
+        self.route = route
+        #self._init_client(cert or Cert(token=token), client, gate, out, compress, port, route)
 
         self.task = TaskManager()
 
@@ -137,7 +174,7 @@ class Bot(AsyncRunnable):
         """
 
         def dec(func: TypeMessageHandler):
-            self.add_message_handler(func, *set(except_type + (MessageTypes.SYS, )))
+            self.add_message_handler(func, *set(except_type + (MessageTypes.SYS,)))
 
         return dec
 
@@ -168,7 +205,7 @@ class Bot(AsyncRunnable):
         """
         get bot itself data
 
-        CAUTION: please call ``await fetch_me()`` first to load data from khl server
+        CAUTION: please call ``await fetch_me()`` first to load data from Kook server
 
         designed as 'empty-then-fetch' will break the rule 'net-related is async'
 
@@ -184,7 +221,7 @@ class Bot(AsyncRunnable):
 
     async def fetch_public_channel(self, channel_id: str) -> PublicChannel:
         """channel id -> :class:`PublicChannel` object(public channel only),
-        fetch details of a public channel from khl
+        fetch details of a public channel from Kook
 
         .. deprecated-removed:: 0.3.0 0.4.0
             use :func:`.client.fetch_public_channel()`"""
@@ -194,7 +231,7 @@ class Bot(AsyncRunnable):
         return await self.client.fetch_public_channel(channel_id)
 
     async def fetch_user(self, user_id: str) -> User:
-        """user id -> :class:`User` object, fetch user info from khl
+        """user id -> :class:`User` object, fetch user info from Kook
 
         .. deprecated-removed:: 0.3.0 0.4.0
             use :func:`.client.fetch_user()`"""
@@ -214,7 +251,7 @@ class Bot(AsyncRunnable):
         return await self.client.delete_channel(channel)
 
     async def fetch_guild(self, guild_id: str) -> Guild:
-        """guild id -> :class:`Guild` object, fetch details of a guild from khl
+        """guild id -> :class:`Guild` object, fetch details of a guild from Kook
 
         .. deprecated-removed:: 0.3.0 0.4.0
             use :func:`.client.fetch_guild()`"""
@@ -254,7 +291,7 @@ class Bot(AsyncRunnable):
         return await self.client.send(target, content, type=type, temp_target_id=temp_target_id, **kwargs)
 
     async def upload_asset(self, file: Union[IO, str, Path]) -> str:
-        """upload ``file`` to khl, and return the url to the file, alias for ``create_asset``
+        """upload ``file`` to Kook, and return the url to the file, alias for ``create_asset``
 
         if ``file`` is a str or Path, ``open(file, 'rb')`` will be called to convert it into IO
 
@@ -266,7 +303,7 @@ class Bot(AsyncRunnable):
         return await self.create_asset(file)
 
     async def create_asset(self, file: Union[IO, str, Path]) -> str:
-        """upload ``file`` to khl, and return the url to the file
+        """upload ``file`` to Kook, and return the url to the file
 
         if ``file`` is a str or Path, ``open(file, 'rb')`` will be called to convert it into IO
 
@@ -336,7 +373,7 @@ class Bot(AsyncRunnable):
                         end_page: int = None,
                         page_size: int = 50,
                         sort: str = '') -> List[Game]:
-        """list the games already registered at khl server
+        """list the games already registered at Kook server
 
         .. deprecated-removed:: 0.3.0 0.4.0
             use :func:`.client.fetch_game_list()`"""
@@ -349,7 +386,7 @@ class Bot(AsyncRunnable):
                                                  sort=sort)
 
     async def create_game(self, name: str, process_name: str = None, icon: str = None) -> Game:
-        """register a new game at khl server, can be used in profile status
+        """register a new game at Kook server, can be used in profile status
 
         .. deprecated-removed:: 0.3.0 0.4.0
             use :func:`.client.register_game()`"""
@@ -359,7 +396,7 @@ class Bot(AsyncRunnable):
         return await self.client.register_game(name, process_name, icon)
 
     async def update_game(self, id: int, name: str = None, icon: str = None) -> Game:
-        """update game already registered at khl server
+        """update game already registered at Kook server
 
         .. deprecated-removed:: 0.3.0 0.4.0
             use :func:`.client.update_game()`"""
@@ -369,7 +406,7 @@ class Bot(AsyncRunnable):
         return await self.client.update_game(id, name, icon)
 
     async def delete_game(self, game: Union[Game, int]):
-        """unregister game from khl server
+        """unregister game from Kook server
 
         :param game: accepts both Game object and bare game id(int type)
 
@@ -441,6 +478,9 @@ class Bot(AsyncRunnable):
         await self.client.update_channel(channel, name, topic, slow_mode)
 
     async def start(self):
+        config = await Config.read("./config.json")
+        self._init_client(self.cert or Cert(token=config["token"]), self.client_, self.gate, self.out, config["compress"], config["port"], self.route)
+
         for func in self._startup_index:
             await func(self)
         if self._is_running:

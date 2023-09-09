@@ -6,9 +6,10 @@ __name__ = "Handler"
 
 class msgHandler:
     _pkg = Dict
+    command_handle_list = []
 
     def __init__(self, pkg) -> None:
         self._pkg = pkg
 
     async def handle(self):
-        logger.info("自定义Handler模块相应")
+        ...

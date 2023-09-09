@@ -15,14 +15,14 @@ from .log import logger
 
 log = logger
 
-__name__ = "Khl.receiver"
+__name__ = "Kook.receiver"
 
 API = 'https://www.kaiheila.cn/api/v3'
 
 
 class Receiver(AsyncRunnable, ABC):
     """
-    1. receive raw data from khl server
+    1. receive raw data from Kook server
     2. decrypt & parse raw data into pkg
     3. put pkg into the pkg_queue() for others to use
     """
@@ -54,7 +54,7 @@ class WebsocketReceiver(Receiver):
         return 'websocket'
 
     async def heartbeat(self, ws_conn: ClientWebSocketResponse):
-        """khl customized heartbeat scheme"""
+        """Kook customized heartbeat scheme"""
         while True:
             try:
                 await asyncio.sleep(26)
@@ -85,7 +85,7 @@ class WebsocketReceiver(Receiver):
         async with cs.ws_connect(self._RAW_GATEWAY) as ws_conn:
             asyncio.ensure_future(self.heartbeat(ws_conn), loop=self.loop)
 
-            log.info('[ init ] Khl模块启动')
+            log.info('[ init ] Kook模块启动')
             try:
                 async for raw in ws_conn:
                     raw: WSMessage

@@ -10,6 +10,7 @@ if TYPE_CHECKING:
 
 logger: "Logger" = loguru.logger
 
+
 class LoguruHandler(logging.Handler):  # pragma: no cover
     """logging 与 loguru 之间的桥梁，将 logging 的日志转发到 loguru。"""
 
@@ -27,6 +28,7 @@ class LoguruHandler(logging.Handler):  # pragma: no cover
         logger.opt(depth=depth, exception=record.exc_info).log(
             level, record.getMessage()
         )
+
 
 default_format: str = (
     "<g>{time:MM-DD HH:mm:ss}</g> "
